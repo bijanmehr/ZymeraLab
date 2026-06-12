@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kymera — JAX-native multi-agent grid simulator</title>
+<link rel="stylesheet" href="style.css">
+<script src="docs.js" defer></script>
+</head>
+<body>
+
+<aside class="sidebar">
+  <a class="brand" href="index.html">
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+      <rect x="3"  y="7" width="13" height="13" fill="#8e2c1f"/>
+      <rect x="9"  y="11" width="13" height="13" fill="#2e6e63" opacity="0.85"/>
+      <rect x="14" y="4" width="11" height="11" fill="none" stroke="#1a1816" stroke-width="2"/>
+    </svg>
+    <span class="name">kymera</span>
+  </a>
+  <nav>
+    <span class="group">Overview</span>
+    <a href="index.html">Introduction</a>
+    <a href="index.html#install">Install</a>
+    <a href="index.html#quickstart">Quick start</a>
+    <a href="index.html#api">Public API</a>
+    <a href="index.html#components">Components</a>
+    <a href="index.html#doctrine">Doctrine</a>
+    <a href="index.html#status">Status</a>
+    <span class="group">Guides</span>
+    <a href="tutorial-env.html">Using the env</a>
+    <span class="group">Reference</span>
+    <a href="specs/2026-06-11-kymera-design.md">Design spec</a>
+    <a href="plans/2026-06-12-kymera-implementation.md">Build plan</a>
+  </nav>
+</aside>
+
+<main>
+<section>
+  <h1>kymera</h1>
+  <p class="lede">A JAX-native multi-agent grid <em>simulator library</em> for
+  communication-constrained swarm research. Like <code>gymnax</code>, but
+  multi-agent — you write the training loop; kymera gives you the env, the
+  rollout primitive, the metrics, and the viz.</p>
+
+  <p>kymera is the successor to <code>zymera</code>, rebuilt around
+  <strong>composition</strong>: an environment is five swappable components
+  (world generation, dynamics, communication, observation, mission) snapped
+  onto one orchestrator. A new research idea is a new component — usually a
+  plain function written in your experiment script — never an edit to the
+  simulator.</p>
+
+  <div class="parity"><span class="tag">Parity</span>
+  kymera reproduces zymera&nbsp;v0 exactly: with the same PRNGKey and policy,
+  walls, spawns, actions, positions, gossip belief maps, and observations are
+  bit-for-bit identical, and per-step rewards match to 1e-5. The gate lives in
+  <code>tests/test_parity.py</code> against golden trajectories dumped from the
+  live v0 install.</div>
+</section>
+
+<section id="install">
+  <h2>Install</h2>
+  <pre><code>python -m venv .venv && source .venv/bin/activate
+pip install -e ".[viz,dev]"     # core is headless; viz pulls matplotlib/pillow
+
+pytest tests/ -q                # full suite incl. the v0 parity gate</code></pre>
+  <p><code>import kymera</code> never pulls plotting or training libraries —
+  the core stays jit/vmap-clean and import-fast. Drawing lives in
+  <code>kymera.viz</code>, opt-in.</p>
+</section>
+
+<section id="quickstart">
+  <h2>Quick start</h2>
+  <pre><code>import jax, kymera
+from kymera import viz
+
+env  = kymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5)
+traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+                      keep="all", collect=("reward_terms",))
+viz.make_report(traj, "report.html", env=env)</code></pre>
+  <p>Every env is a deterministic function of its spec and the key — re-run a
+  rollout to re-render anything; never archive heavy trajectories.</p>
+</section>
+
+<section id="api">
+  <h2>Public API</h2>
+  <p>Fourteen top-level names; everything else lives behind seven
+  subnamespaces. This cap is a design rule, not an accident.</p>
+  <table>
+    <tr><th>name</th><th>what</th></tr>
+    <tr><td><code>make(name, **kw)</code> / <code>make_from(spec)</code></td>
+        <td>construct a registered recipe; rebuild from <code>env.spec()</code></td></tr>
+    <tr><td><code>register_env</code> / <code>list_envs</code></td>
+        <td>add your own recipes to the registry</td></tr>
+    <tr><td><code>Env</code> / <code>GridEnv</code></td>
+        <td>gym-style base; the component orchestrator</td></tr>
+    <tr><td><code>World</code> / <code>Body</code></td>
+        <td>the frozen state pytree every component reads</td></tr>
+    <tr><td><code>ActionId</code> / <code>N_ACTIONS</code> / <code>ACTION_DELTAS</code></td>
+        <td>STAY / NORTH / EAST / SOUTH / WEST</td></tr>
+    <tr><td><code>RewardTerm</code></td>
+        <td>a named, weighted, composable reward component</td></tr>
+    <tr><td><code>rollout(env, policy, n, key, keep=, collect=)</code></td>
+        <td>the <code>lax.scan</code> rollout primitive, vmap-friendly</td></tr>
+    <tr><td><code>random_policy</code></td>
+        <td>uniform random actions, the example policy</td></tr>
+  </table>
+  <table>
+    <tr><th>subnamespace</th><th>contents</th></tr>
+    <tr><td><code>kymera.worldgen</code></td><td>OpenTerrain · RandomWalls · MapFile · Rooms · Scatter/Cluster/FixedSpawn</td></tr>
+    <tr><td><code>kymera.dynamics</code></td><td>GridDynamics · NoCollision · SequentialClaim · sequential_masked_sample</td></tr>
+    <tr><td><code>kymera.comms</code></td><td>DiskTopology · GossipChannel(delay, dropout) · NullChannel</td></tr>
+    <tr><td><code>kymera.obs</code></td><td>VectorObs · GridObs · CHANNEL_FNS · register_channel</td></tr>
+    <tr><td><code>kymera.missions</code></td><td>Mission · GroupedMission · FixedAssignment · RandomKofN · Point/Path/Region</td></tr>
+    <tr><td><code>kymera.missions_terms</code></td><td>the term library: new_coverage · reach_fraction · capped_giant · pbrs · cbf_* …</td></tr>
+    <tr><td><code>kymera.metrics</code></td><td>adjacency · reach · giant_component · coverage_fraction · StepCtx/derive</td></tr>
+    <tr><td><code>kymera.viz</code></td><td>render_gif · render_comm_gif · make_report (opt-in extra)</td></tr>
+  </table>
+</section>
+
+<section id="components">
+  <h2>The five components</h2>
+  <p>One <code>GridEnv.step</code> runs: dynamics → visit counts → cover
+  footprint → channel delivery (<code>comm_graph</code> := delivered edges) →
+  <code>metrics.derive</code> (shared quantities computed <em>once</em>) →
+  mission update / reward / done → observation.</p>
+  <table>
+    <tr><th>component</th><th>owns</th><th>built-ins</th></tr>
+    <tr><td><strong>WorldGen</strong></td><td>walls + spawn positions</td>
+        <td>open grid, random walls, ASCII map files, rooms; scatter / clustered / fixed spawns</td></tr>
+    <tr><td><strong>Dynamics</strong></td><td>movement, collision, action masks</td>
+        <td>boundary-clip + wall-revert; sequential-claim hard collisions with a <code>blocked</code> signal; collision-free masked sampling for trainers</td></tr>
+    <tr><td><strong>CommChannel</strong></td><td>who hears what, when</td>
+        <td>disk topology; gossip with payload ring buffer (<code>delay</code>), per-edge <code>dropout</code>; delivered edges wired into <code>World.comm_graph</code></td></tr>
+    <tr><td><strong>ObsBuilder</strong></td><td>what policies see</td>
+        <td>vector obs; named-channel grid obs (belief, positions, neighbors, local frontier) + a central critic view</td></tr>
+    <tr><td><strong>Mission</strong></td><td>reward, termination, metrics, overlays</td>
+        <td>sum of named <code>RewardTerm</code>s with per-term logging; PBRS and soft-CBF combinators; per-group missions for red-within-blue</td></tr>
+  </table>
+</section>
+
+<section id="doctrine">
+  <h2>Doctrine</h2>
+  <p>Rules inherited from the RedWithinBlue / zymera research program, baked in
+  so they can't be forgotten:</p>
+  <div class="doctrine"><span class="tag">Doctrine</span>
+  <strong>Eval samples π — never argmax.</strong> Argmax collapses the
+  symmetry-breaking policies use for who-goes-where tie-breaks.</div>
+  <div class="doctrine"><span class="tag">Doctrine</span>
+  <strong>Multi-seed via vmap, never a Python loop.</strong> Episodes are
+  fixed-length <code>lax.scan</code>; sequential conflicts resolve via
+  scan-over-agents.</div>
+  <div class="doctrine"><span class="tag">Doctrine</span>
+  <strong>The reward term <em>set</em> is static.</strong> Weights may become
+  traced later; never gate compilation on <code>w == 0</code>.</div>
+  <div class="doctrine"><span class="tag">Doctrine</span>
+  <strong>Connectivity reads potential topology</strong> unless a term opts
+  into delivered edges; both are logged. Decided before the dropout era so
+  results stay comparable across it.</div>
+  <div class="doctrine"><span class="tag">Doctrine</span>
+  <strong>The reset/step key-split order is frozen.</strong> Reproducibility
+  and the v0 parity gate ride on it.</div>
+</section>
+
+<section id="status">
+  <h2>Status — v0.1.0</h2>
+  <table>
+    <tr><th>done</th><th>deferred</th></tr>
+    <tr>
+      <td>core library (5 components + orchestrator), 230+ tests, full zymera-v0
+      bit-parity gate, recipes <code>empty</code> and <code>comm-coverage</code>,
+      grouped missions / k-of-N assignment, viz (gif, comm overlay, HTML report
+      with per-term curves, annotations)</td>
+      <td><code>kymera.lab</code> (unified PPO trainer, eval, run provenance —
+      next milestone), isometric renderer + keyboard teleop (port from v0),
+      channel bandwidth (needs step-stamp payloads), jamming, energy mechanics,
+      traced-knob sweeps, the trainer shadow run</td>
+    </tr>
+  </table>
+  <p>The architecture and the migration plan live in the
+  <a href="specs/2026-06-11-kymera-design.md">design spec</a>; build history in
+  the <a href="plans/2026-06-12-kymera-implementation.md">implementation plan</a>.</p>
+</section>
+
+<p class="footnote">kymera · after <em>chimera</em> — a creature composed of
+different parts. Successor to zymera; the predecessor repo at
+<code>../zymera_env/</code> stays frozen as the parity reference.</p>
+</main>
+</body>
+</html>
