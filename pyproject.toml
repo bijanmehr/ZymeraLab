@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kymera"
+version = "0.1.0"
+description = "JAX-native multi-agent grid simulator for communication-constrained swarm research"
+requires-python = ">=3.10"
+dependencies = [
+    "jax>=0.4",
+    "jaxlib>=0.4",
+    "chex>=0.1",
+    "numpy",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.5", "pillow"]
+lab = ["equinox>=0.11", "optax>=0.1", "msgspec>=0.18", "pyyaml>=6.0"]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["kymera*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
