@@ -2,14 +2,21 @@
 
 Headless core: ``import kymera`` pulls no plotting or training libraries.
 Drawing lives in :mod:`kymera.viz`; training machinery in :mod:`kymera.lab`
-(both are opt-in extras).
+(both are opt-in extras). Components live in the subnamespaces
+(``kymera.worldgen`` / ``dynamics`` / ``comms`` / ``obs`` / ``missions`` /
+``missions_terms`` / ``metrics``).
 """
 
+# NOTE: .env must be imported FIRST — it drives the package load order.
+# Component modules back-import names from kymera.env (e.g. ACTION_DELTAS);
+# env.py defines those above its own component imports, so the cycle resolves
+# only when env.py is the entry point.
 from .env import (
     ActionId,
     ACTION_DELTAS,
     Body,
     Env,
+    GridEnv,
     N_ACTIONS,
     World,
     list_envs,
@@ -17,6 +24,8 @@ from .env import (
     make_from,
     register_env,
 )
+from . import comms, dynamics, metrics, missions, missions_terms, obs, worldgen
+from .missions import RewardTerm
 from .rollout import random_policy, rollout
 
 __version__ = "0.1.0"
@@ -26,7 +35,9 @@ __all__ = [
     "ACTION_DELTAS",
     "Body",
     "Env",
+    "GridEnv",
     "N_ACTIONS",
+    "RewardTerm",
     "World",
     "list_envs",
     "make",
@@ -34,5 +45,6 @@ __all__ = [
     "register_env",
     "random_policy",
     "rollout",
-    "__version__",
+    # subnamespaces
+    "comms", "dynamics", "metrics", "missions", "missions_terms", "obs", "worldgen",
 ]
