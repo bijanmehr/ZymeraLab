@@ -1,8 +1,8 @@
 """zymera — JAX-native multi-agent grid simulator.
 
 Headless core: ``import zymera`` pulls no plotting or training libraries.
-Drawing lives in :mod:`zymera.viz`; training machinery in :mod:`zymera.lab`
-(both are opt-in extras). Components live in the subnamespaces
+Drawing lives in :mod:`zymera.viz` (opt-in); agent building blocks + trainers
+live in :mod:`zymera.nets` / :mod:`zymera.train`. Components live in the subnamespaces
 (``zymera.worldgen`` / ``dynamics`` / ``comms`` / ``obs`` / ``missions`` /
 ``missions_terms`` / ``metrics``).
 """
