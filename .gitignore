@@ -6,3 +6,4 @@ experiments/runs/
 *.gif
 *.png
 .DS_Store
+.obsidian/
