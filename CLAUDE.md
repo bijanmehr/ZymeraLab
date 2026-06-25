@@ -1,78 +1,92 @@
-# CLAUDE.md — zymera
+# CLAUDE.md — zymera_lab
 
-This file provides guidance to Claude Code (claude.ai/code) when working **inside `zymera/`**.
-Workspace overview: `../CLAUDE.md`. The codebase zymera supersedes: `../zymera_env/CLAUDE.md`.
+Guidance for Claude Code working **inside `zymera_lab/`**. Workspace overview: `../CLAUDE.md`.
+Experiments live in `../zymera_experiments/` (separate). Archived reference: `../zymera_env/`.
 
 ## What this is
 
-`zymera` (after *chimera* — parts composed) is a JAX-native multi-agent grid **simulator library** for
-cooperative, communication-constrained, and adversarial swarm research. It is the **successor to
-`zymera`**, rebuilt around composition: *a new research idea is a new component written in an experiment
-script, never an edit to the simulator.* Its own git repo. It is the **destination for new experiments**
-(migration in progress).
+`zymera_lab/` is one Python package, **`zymera`** — a JAX-native toolkit for **designing agent mechanisms
+and learning stacks** on communication-constrained cooperative (and adversarial) swarm missions. Three
+flat layers, all in the `zymera` package:
 
-Design intent: **one installable library, two layers** — `zymera` (the simulator) + `zymera.lab` (the
-trainer / eval / run-provenance machinery). Experiments stay downstream: ~20-line files that import
-zymera, define ideas locally, and "graduate" proven ones into the library. This is the deliberate
-antidote to `zymera_env/examples/` sprawl.
+- **simulator** — the grid env + components (`env`, `worldgen`, `dynamics`, `comms`, `obs`, `missions`,
+  `metrics`, `rollout`, `viz`, `sensor`).
+- **`nets.py`** — composable agent **building blocks** (the parts you wire into a policy).
+- **`train.py`** — **trainers** + shared training utilities.
 
-## Build state — read this first
+**Experiments are separate.** They live in `../zymera_experiments/`, import `zymera`, and write their own
+learning stacks. The dependency is **one-way**: `zymera_experiments → zymera`; the simulator never imports
+`nets`/`train`. Proven blocks/trainers graduate from an experiment into `nets.py`/`train.py` with a test.
 
-All **216 tests pass** (15 s), including a **bit-parity gate against zymera v0**. But zymera is a
-*simulator you cannot train in yet*:
+The lab is built **clean**: `nets.py`/`train.py` start minimal and grow as experiments need them,
+referencing the archived `../zymera_env/` for algorithms — no bulk-copy of the old engine/sprawl.
 
-| Layer | State |
-|------|-------|
-| Simulator: `env`, `worldgen`, `dynamics`, `comms`, `obs`, `missions`(+`missions_terms`), `metrics`, `rollout` | ✅ built, parity-tested |
-| Recipes | ✅ `empty`, `comm-coverage` registered |
-| Reward-term zoo (`missions_terms.py`) | ✅ implemented (see below) |
-| Grouping / adversarial substrate (`GroupedMission`, `FixedAssignment`, `RandomKofN`, potential-vs-delivered comms) | ✅ implemented |
-| `viz` | ◑ flat `render` + `report` only (no iso / comm-overlay / annotations / teleop yet) |
-| **`zymera.lab`** (PPO trainer + eval + provenance) | ❌ **not built** — the gate for any learned experiment |
-| **`sensor.py`** (host occlusion sensor) | ❌ not built (in-env partial obs via `GridObs(sense_r=…)` works) |
+## Build state
 
-**Implication:** you can compose/register envs, missions, groups, adversaries and run `rollout` under
-random/scripted policies *today*; you cannot train a policy with the library until `zymera.lab` exists
-(or you hand-roll a loop on `zymera.rollout`).
+- **Simulator:** built, **green** (golden-file parity gate included). Recipes: `comm-coverage`, `empty`.
+- **Lab seeds (P1):** `nets.py` (one block — `mlp_init`/`mlp_apply`), `train.py` (`evaluate`),
+  `sensor.py` (radius visibility). These are seeds; grow them as experiments need them.
+- Reward-term zoo, grouping/adversarial substrate (`GroupedMission`/`RandomKofN`), potential-vs-delivered
+  comms: implemented.
+- **Tests:** `pytest tests/ -q` → **222 passed** (216 simulator + sensor/nets/train).
 
 ## Setup & commands
 
-Python ≥ 3.10; venv at `zymera/.venv` (present). No console scripts yet.
+Python ≥ 3.10; venv `zymera_lab/.venv`.
 
 ```bash
 source .venv/bin/activate
-pip install -e ".[dev,viz]"          # core + tests + plotting. ".[lab]" extra exists for when lab lands.
-pytest tests/ -q                      # 216 tests incl. the v0 parity gate
+pip install -e ".[dev,viz]"          # core + tests + plotting. ([lab] = equinox/optax, for P2 trainers.)
+pytest tests/ -q                      # 222 tests incl. the golden-file parity gate
 python -c "import zymera; print(zymera.list_envs())"   # ['comm-coverage', 'empty']
+# run an experiment (from the sibling folder):
+.venv/bin/python ../zymera_experiments/00_random_rollout.py
 ```
 
-Deps: jax, jaxlib, chex, numpy. Extras: `[viz]` (matplotlib, pillow), `[lab]` (equinox, optax, msgspec,
-pyyaml — **declared, layer not built**), `[dev]` (pytest).
+## The agent contract
 
-## Public API
+A policy is a **callable convention**, not a base class:
 
-~13 top-level names + subnamespaces (the cap is a design rule — components stay behind subnamespaces):
+```
+policy(obs, state, key) -> (action, state)
+```
+
+- `nets.py` provides the parts; an experiment wires them into a `policy`. `zymera.random_policy` is the
+  reference stateless policy; `rollout(env, policy, n_steps, key)` runs episodes (`vmap` over key for seeds).
+- `state` carries per-agent recurrent/memory (e.g. a belief); `()` for stateless policies.
+- `action` today is movement `(N,) int32` (`STAY/UP/DOWN/LEFT/RIGHT`, `N_ACTIONS = 5`). The contract keeps
+  **planned seams** (P3, not yet built): **hierarchy** — a policy emits a goal, a lab low-level controller
+  turns it into movement (no sim change); **learned comms** — policies emit messages, a scoped `comms`
+  extension transports them (sim change, re-baseline-gated).
+
+`train.py` holds **independent trainers** (ppo/es/supervised arrive in P2) + shared utils (`evaluate` so
+far), with **no forced common interface**. An experiment writes its learning stack by importing a trainer
++ `nets`.
+
+## Public API (simulator)
 
 ```
 make · make_from · list_envs · register_env · Env · GridEnv · World · Body ·
 ActionId · ACTION_DELTAS · N_ACTIONS · RewardTerm · rollout · random_policy
-subnamespaces:  worldgen · dynamics · comms · obs · missions · missions_terms · metrics  (+ viz, lab[future])
+subnamespaces:  worldgen · dynamics · comms · obs · missions · missions_terms · metrics · viz
+lab modules:    nets · train · sensor
 ```
 
 ```python
-import zymera as ky
-env = ky.make("comm-coverage", grid=16, n_agents=4)                 # recipe + good defaults
-env = ky.make("comm-coverage", grid=16, n_agents=4,
-              comm=ky.comms.GossipChannel(ky.comms.DiskTopology(5), dropout=0.1),
-              terms=[("coverage", 1.0), ("capped_giant", 1.5, dict(cap=3))])
-env2 = env.replace(terms=[...])          # cheap variation
-spec = env.spec(); env3 = ky.make_from(spec)   # round-trips to plain dict (YAML/JSON-able)
+import jax, zymera
+from zymera import nets, train, viz
+env = zymera.make("comm-coverage", grid=16, n_agents=4)
+env = zymera.make("comm-coverage", grid=16, n_agents=4,
+                  comm=zymera.comms.GossipChannel(zymera.comms.DiskTopology(5), dropout=0.1),
+                  terms=[("coverage", 1.0), ("capped_giant", 1.5, dict(cap=3))])
+env2 = env.replace(terms=[...])                 # cheap variation
+spec = env.spec(); env3 = zymera.make_from(spec)   # round-trips to a plain dict (YAML/JSON-able)
 ```
 
-## Architecture — the five components
+## Architecture — the simulator components
 
-Every component is a `dataclass(frozen=True)` of hashable Python values with pure-JAX methods; jitted
-code closes over `env` (components are trace-time constants). Files in `zymera/`:
+Every component is a `dataclass(frozen=True)` of hashable Python values with pure-JAX methods; jitted code
+closes over `env` (components are trace-time constants). Files in `zymera/`:
 
 - **`worldgen.py`** — `Terrain` (`OpenTerrain`, `RandomWalls(n)`, `MapFile`, `Rooms`) + `Spawn`
   (`ScatterSpawn`, `ClusterSpawn(radius)`, `FixedSpawn`).
@@ -86,17 +100,18 @@ code closes over `env` (components are trace-time constants). Files in `zymera/`
   potential topology unless they opt into delivered; both are logged.
 - **`obs.py`** — `ObsBuilder` (`VectorObs`, `GridObs(channels=…, sense_r=…, central=…)`). Channels are
   named functions in `CHANNEL_FNS` (`known`, `own_pos`, `known_walls`, `neighbors`, `local_frontier`,
-  `team_explored`, `all_pos`, `walls`); add your own with `obs.register_channel(name, fn)` from an
-  experiment file. `central=…` is the CTDE critic view. `requires` declares needed `StepCtx` fields so
-  unused computation never compiles.
+  `team_explored`, `all_pos`, `walls`); add your own with `obs.register_channel(name, fn)`. `central=…` is
+  the CTDE critic view. `requires` declares needed `StepCtx` fields so unused computation never compiles.
 - **`missions.py`** — reward-as-data. `RewardTerm(name, weight, fn, requires)`; `Mission(terms=…)`;
   drawable `annotations` (`Point`/`Path`/`Region`). **Grouping / adversarial:** `Assignment` protocol
   (`FixedAssignment`, `RandomKofN(k, group=1)`) + `GroupedMission(assignment, missions)` routes per-group
-  objectives over a shared world, metrics namespaced `g0/…`, `g1/…`. Action contract stays `(N,) int32`.
+  objectives over a shared world, metrics namespaced `g0/…`, `g1/…`.
 
 Plus **`metrics.py`** (`StepCtx` — `derive(prev, world, requires, topology)`; pairwise dist, adjacency,
 reach, giant component, coverage, redundancy, dist-to-frontier…), **`rollout.py`**
-(`rollout(env, policy, n_steps, key, keep=, collect=)`, `random_policy`), **`viz/`** (`render`, `report`).
+(`rollout(env, policy, n_steps, key, keep=, collect=)`, `random_policy`), **`viz/`** (`render_gif`,
+`render_comm_gif`, `make_report`; `render_gif` takes `traj["world"]`), **`sensor.py`** (host radius
+visibility — `visible_cells(pos, wall, radius)`).
 
 ## Env & step contract
 
@@ -115,25 +130,6 @@ documented contract: `reset_key,scan_key = split(key)`; per step `k,action_key,s
 group assignment `fold_in(key,1)`, mission init `fold_in(key,2)`. `info` keys are fixed:
 `{explored, step_count, seen_by, comm_graph, reward_terms, metrics}`.
 
-## Agent design (the constraints that bound the research space)
-
-In zymera an agent is three parts; only the brain is missing — **and two hard stances define what agents
-you can build**:
-
-- **Senses (input) — built.** A policy is `(obs, key) -> (N,) int32`; `obs` is composed from named
-  channels (above), with a separate CTDE central view. New perception = a registered channel fn.
-- **Body (output) — built but frozen.** Actions are a fixed `IntEnum` `STAY/UP/DOWN/LEFT/RIGHT`
-  (`N_ACTIONS = 5`), **movement only, forever**. `dynamics` turns 5-way logits into collision-free
-  actions. ⇒ Goal/hierarchical agents are expressible only as **policy-internal** hierarchy (a high-level
-  goal selector feeding a low-level move head); there are **no env-level macro-actions or goal-actions**.
-- **Brain (policy network) — NOT built.** zymera has no actor/critic/encoder/attention — only
-  `random_policy`. Learned architectures belong in `zymera.lab.nets` (unbuilt); the reference nets live
-  in `../zymera_env/examples/lib/` and `../zymera_env/swarm_explore/{policy,gcrn}.py`.
-- **Communication is env-mediated; policies never emit messages.** No learned messaging / emergent
-  protocols by design — comm is a channel gossiping env-owned belief maps. The flip side (good for the
-  threat model): *attacks on* comms (message manipulation), obs spoofing, and action injection are
-  modeled env-side over the `group` machinery, not as policy outputs.
-
 ## Reward-term zoo (`missions_terms.py`, implemented)
 
 `new_coverage`, `reach_fraction`, `capped_giant(cap)` (connectivity), `collision_count`,
@@ -149,17 +145,13 @@ locally in an experiment file; if it proves out across >1 experiment, graduate i
 - Components are frozen/hashable static objects; **no Python branching on traced values**; `requires`-
   gating decides what compiles. Config objects never cross the jit boundary.
 - The **term SET is static**; weights may become traced later — never gate on `w == 0`.
-- Top-level `__all__` ≤ ~13; components live in subnamespaces (a design rule, not an accident).
+- Top-level simulator `__all__` stays small; components live in subnamespaces.
 - Reset/step key-split order is frozen; connectivity terms read potential topology unless opting into
   delivered (both logged).
 
-## Migration status & where to read more
+## Where to read more
 
-- **The gate for new experiments is `zymera.lab`** (design "step 7": `config`/`runio` → `ppo` →
-  `nets` → `eval`), accepted via a **shadow run** reproducing a known v0 result within seed noise. The
-  `sensor.py` + a rewritten `swarm_explore/core.py` separately unlock the belief/relay re-dos.
-- **Authoritative docs:** `docs/specs/2026-06-11-zymera-design.md` (full architecture, doctrine,
-  parity strategy, migration steps 0–9) and `docs/plans/2026-06-12-zymera-implementation.md`. Also
-  `README.md` and `docs/tutorial-env.html`.
-- Per zymera's **dual-maintenance rule**: once lab's shadow run passes, `zymera_env/` freezes and all new
-  work lands here. Until then, treat this as the forward target, not yet the active stack.
+- **Design:** `docs/specs/2026-06-25-zymera-lab-design.md`. **Scaffold plan:**
+  `docs/plans/2026-06-25-zymera-lab-p1-scaffold.md`.
+- Older `docs/specs/2026-06-11-*` / `docs/plans/2026-06-12-*` describe the original simulator design and
+  are partly superseded by the consolidation spec above.
