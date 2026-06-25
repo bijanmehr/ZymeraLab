@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>kymera — JAX-native multi-agent grid simulator</title>
+<title>zymera — JAX-native multi-agent grid simulator</title>
 <link rel="stylesheet" href="style.css">
 <script src="docs.js" defer></script>
 </head>
@@ -16,7 +16,7 @@
       <rect x="9"  y="11" width="13" height="13" fill="#2e6e63" opacity="0.85"/>
       <rect x="14" y="4" width="11" height="11" fill="none" stroke="#1a1816" stroke-width="2"/>
     </svg>
-    <span class="name">kymera</span>
+    <span class="name">zymera</span>
   </a>
   <nav>
     <span class="group">Overview</span>
@@ -30,20 +30,20 @@
     <span class="group">Guides</span>
     <a href="tutorial-env.html">Using the env</a>
     <span class="group">Reference</span>
-    <a href="specs/2026-06-11-kymera-design.md">Design spec</a>
-    <a href="plans/2026-06-12-kymera-implementation.md">Build plan</a>
+    <a href="specs/2026-06-11-zymera-design.md">Design spec</a>
+    <a href="plans/2026-06-12-zymera-implementation.md">Build plan</a>
   </nav>
 </aside>
 
 <main>
 <section>
-  <h1>kymera</h1>
+  <h1>zymera</h1>
   <p class="lede">A JAX-native multi-agent grid <em>simulator library</em> for
   communication-constrained swarm research. Like <code>gymnax</code>, but
-  multi-agent — you write the training loop; kymera gives you the env, the
+  multi-agent — you write the training loop; zymera gives you the env, the
   rollout primitive, the metrics, and the viz.</p>
 
-  <p>kymera is the successor to <code>zymera</code>, rebuilt around
+  <p>zymera is the successor to <code>zymera</code>, rebuilt around
   <strong>composition</strong>: an environment is five swappable components
   (world generation, dynamics, communication, observation, mission) snapped
   onto one orchestrator. A new research idea is a new component — usually a
@@ -51,7 +51,7 @@
   simulator.</p>
 
   <div class="parity"><span class="tag">Parity</span>
-  kymera reproduces zymera&nbsp;v0 exactly: with the same PRNGKey and policy,
+  zymera reproduces zymera&nbsp;v0 exactly: with the same PRNGKey and policy,
   walls, spawns, actions, positions, gossip belief maps, and observations are
   bit-for-bit identical, and per-step rewards match to 1e-5. The gate lives in
   <code>tests/test_parity.py</code> against golden trajectories dumped from the
@@ -64,18 +64,18 @@
 pip install -e ".[viz,dev]"     # core is headless; viz pulls matplotlib/pillow
 
 pytest tests/ -q                # full suite incl. the v0 parity gate</code></pre>
-  <p><code>import kymera</code> never pulls plotting or training libraries —
+  <p><code>import zymera</code> never pulls plotting or training libraries —
   the core stays jit/vmap-clean and import-fast. Drawing lives in
-  <code>kymera.viz</code>, opt-in.</p>
+  <code>zymera.viz</code>, opt-in.</p>
 </section>
 
 <section id="quickstart">
   <h2>Quick start</h2>
-  <pre><code>import jax, kymera
-from kymera import viz
+  <pre><code>import jax, zymera
+from zymera import viz
 
-env  = kymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5)
-traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+env  = zymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5)
+traj = zymera.rollout(env, zymera.random_policy, 70, jax.random.PRNGKey(0),
                       keep="all", collect=("reward_terms",))
 viz.make_report(traj, "report.html", env=env)</code></pre>
   <p>Every env is a deterministic function of its spec and the key — re-run a
@@ -107,14 +107,14 @@ viz.make_report(traj, "report.html", env=env)</code></pre>
   </table>
   <table>
     <tr><th>subnamespace</th><th>contents</th></tr>
-    <tr><td><code>kymera.worldgen</code></td><td>OpenTerrain · RandomWalls · MapFile · Rooms · Scatter/Cluster/FixedSpawn</td></tr>
-    <tr><td><code>kymera.dynamics</code></td><td>GridDynamics · NoCollision · SequentialClaim · sequential_masked_sample</td></tr>
-    <tr><td><code>kymera.comms</code></td><td>DiskTopology · GossipChannel(delay, dropout) · NullChannel</td></tr>
-    <tr><td><code>kymera.obs</code></td><td>VectorObs · GridObs · CHANNEL_FNS · register_channel</td></tr>
-    <tr><td><code>kymera.missions</code></td><td>Mission · GroupedMission · FixedAssignment · RandomKofN · Point/Path/Region</td></tr>
-    <tr><td><code>kymera.missions_terms</code></td><td>the term library: new_coverage · reach_fraction · capped_giant · pbrs · cbf_* …</td></tr>
-    <tr><td><code>kymera.metrics</code></td><td>adjacency · reach · giant_component · coverage_fraction · StepCtx/derive</td></tr>
-    <tr><td><code>kymera.viz</code></td><td>render_gif · render_comm_gif · make_report (opt-in extra)</td></tr>
+    <tr><td><code>zymera.worldgen</code></td><td>OpenTerrain · RandomWalls · MapFile · Rooms · Scatter/Cluster/FixedSpawn</td></tr>
+    <tr><td><code>zymera.dynamics</code></td><td>GridDynamics · NoCollision · SequentialClaim · sequential_masked_sample</td></tr>
+    <tr><td><code>zymera.comms</code></td><td>DiskTopology · GossipChannel(delay, dropout) · NullChannel</td></tr>
+    <tr><td><code>zymera.obs</code></td><td>VectorObs · GridObs · CHANNEL_FNS · register_channel</td></tr>
+    <tr><td><code>zymera.missions</code></td><td>Mission · GroupedMission · FixedAssignment · RandomKofN · Point/Path/Region</td></tr>
+    <tr><td><code>zymera.missions_terms</code></td><td>the term library: new_coverage · reach_fraction · capped_giant · pbrs · cbf_* …</td></tr>
+    <tr><td><code>zymera.metrics</code></td><td>adjacency · reach · giant_component · coverage_fraction · StepCtx/derive</td></tr>
+    <tr><td><code>zymera.viz</code></td><td>render_gif · render_comm_gif · make_report (opt-in extra)</td></tr>
   </table>
 </section>
 
@@ -171,18 +171,18 @@ viz.make_report(traj, "report.html", env=env)</code></pre>
       bit-parity gate, recipes <code>empty</code> and <code>comm-coverage</code>,
       grouped missions / k-of-N assignment, viz (gif, comm overlay, HTML report
       with per-term curves, annotations)</td>
-      <td><code>kymera.lab</code> (unified PPO trainer, eval, run provenance —
+      <td><code>zymera.lab</code> (unified PPO trainer, eval, run provenance —
       next milestone), isometric renderer + keyboard teleop (port from v0),
       channel bandwidth (needs step-stamp payloads), jamming, energy mechanics,
       traced-knob sweeps, the trainer shadow run</td>
     </tr>
   </table>
   <p>The architecture and the migration plan live in the
-  <a href="specs/2026-06-11-kymera-design.md">design spec</a>; build history in
-  the <a href="plans/2026-06-12-kymera-implementation.md">implementation plan</a>.</p>
+  <a href="specs/2026-06-11-zymera-design.md">design spec</a>; build history in
+  the <a href="plans/2026-06-12-zymera-implementation.md">implementation plan</a>.</p>
 </section>
 
-<p class="footnote">kymera · after <em>chimera</em> — a creature composed of
+<p class="footnote">zymera · after <em>chimera</em> — a creature composed of
 different parts. Successor to zymera; the predecessor repo at
 <code>../zymera_env/</code> stays frozen as the parity reference.</p>
 </main>

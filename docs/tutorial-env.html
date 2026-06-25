@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Using the env — kymera</title>
+<title>Using the env — zymera</title>
 <link rel="stylesheet" href="style.css">
 <script src="docs.js" defer></script>
 </head>
@@ -16,7 +16,7 @@
       <rect x="9"  y="11" width="13" height="13" fill="#2e6e63" opacity="0.85"/>
       <rect x="14" y="4" width="11" height="11" fill="none" stroke="#1a1816" stroke-width="2"/>
     </svg>
-    <span class="name">kymera</span>
+    <span class="name">zymera</span>
   </a>
   <nav>
     <span class="group">Overview</span>
@@ -46,10 +46,10 @@
   <p>Environments are built from named <em>recipes</em> with good defaults.
   The simplest is <code>"empty"</code>: an open grid, vector observations, no
   reward — pure physics.</p>
-  <pre><code>import jax, kymera
+  <pre><code>import jax, zymera
 
-env  = kymera.make("empty", grid_h=8, grid_w=8, n_agents=4)
-traj = kymera.rollout(env, kymera.random_policy, 32, jax.random.PRNGKey(0))
+env  = zymera.make("empty", grid_h=8, grid_w=8, n_agents=4)
+traj = zymera.rollout(env, zymera.random_policy, 32, jax.random.PRNGKey(0))
 traj["obs"].shape, traj["reward"].shape
 ⇒ ((33, 4, 3), (32, 4))</code></pre>
   <p><code>rollout</code> wraps reset + step in one <code>lax.scan</code>.
@@ -58,7 +58,7 @@ traj["obs"].shape, traj["reward"].shape
   is jit-pure — wrap it in <code>jax.vmap</code> over the key for free
   seed-parallelism:</p>
   <pre><code>keys  = jax.random.split(jax.random.PRNGKey(0), 32)
-batch = jax.vmap(lambda k: kymera.rollout(env, kymera.random_policy, 32, k))(keys)
+batch = jax.vmap(lambda k: zymera.rollout(env, zymera.random_policy, 32, k))(keys)
 batch["reward"].shape
 ⇒ (32, 32, 4)   # (seeds, T, N)</code></pre>
   <div class="doctrine"><span class="tag">Doctrine</span>
@@ -104,7 +104,7 @@ sorted(info)
   their belief maps with neighbours inside a comm radius (one-step delay,
   multi-hop flooding), and are rewarded for new coverage, staying connected,
   and not colliding. Printing the env shows the whole composition:</p>
-  <pre><code>env = kymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5, spawn_radius=2)
+  <pre><code>env = zymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5, spawn_radius=2)
 print(env)
 ⇒ GridEnv(16×16, n_agents=4, cover_r=0,
 ⇒   terrain=OpenTerrain(), spawn=ClusterSpawn(radius=2),
@@ -116,7 +116,7 @@ print(env)
 ⇒               central=('team_explored', 'all_pos', 'walls')),
 ⇒   mission=[coverage×1, connectivity×2, collision×-4])</code></pre>
   <p>Per-agent observations are a 5-channel grid, each channel a named entry
-  from <code>kymera.obs.CHANNEL_FNS</code>:</p>
+  from <code>zymera.obs.CHANNEL_FNS</code>:</p>
   <table>
     <tr><th>channel</th><th>what the agent sees</th></tr>
     <tr><td><code>known</code></td><td>its post-gossip belief map (<code>channel.shared</code>)</td></tr>
@@ -128,7 +128,7 @@ print(env)
   <p>Rewards are a sum of named terms, and every term's <em>unweighted</em>
   per-agent contribution is logged each step — “which term is driving
   behaviour” is a curve, not an archaeology project:</p>
-  <pre><code>traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+  <pre><code>traj = zymera.rollout(env, zymera.random_policy, 70, jax.random.PRNGKey(0),
                       keep="all", collect=("reward_terms",))
 traj["info"]["reward_terms"].keys()
 ⇒ dict_keys(['collision', 'connectivity', 'coverage'])
@@ -152,21 +152,21 @@ f"{float(coverage[-1]):.1%}"
   <p>Recipe kwargs cover the common knobs; for anything else, pass component
   objects. Both styles below were executed:</p>
   <pre><code># recipe knobs: scatter spawns, hard collisions, lossy comms
-env = kymera.make("comm-coverage", grid=8, n_agents=3, comm_r=3,
+env = zymera.make("comm-coverage", grid=8, n_agents=3, comm_r=3,
                   spawn_radius=None,      # None ⇒ scatter (default: clustered)
                   collision="block",      # sequential-claim: no two agents share a cell
                   dropout=0.1)            # 10% per-edge delivery failure
 
 # full composition: an ASCII map + vector obs on a 4×8 world
-from kymera.worldgen import MapFile
+from zymera.worldgen import MapFile
 rooms = MapFile.from_string("""
 ........
 ...##...
 ...##...
 ........
 """)
-env = kymera.GridEnv(grid_h=4, grid_w=8, n_agents=2, terrain=rooms,
-                     obs=kymera.obs.VectorObs())</code></pre>
+env = zymera.GridEnv(grid_h=4, grid_w=8, n_agents=2, terrain=rooms,
+                     obs=zymera.obs.VectorObs())</code></pre>
   <p>Channel knobs deserve a note: <code>delay</code> sizes the gossip ring
   buffer (how stale relayed beliefs are), and <code>dropout</code> makes
   delivery stochastic. <code>World.comm_graph</code> always records what
@@ -182,10 +182,10 @@ env = kymera.GridEnv(grid_h=4, grid_w=8, n_agents=2, terrain=rooms,
   <p>A reward term is a plain function
   <code>(prev_world, world, action, ctx) → (N,) unweighted</code>. Write it
   next to your experiment, mix it with shorthand terms, and only move it into
-  <code>kymera.missions_terms</code> once it has earned its keep — the
+  <code>zymera.missions_terms</code> once it has earned its keep — the
   <em>graduation rule</em>. The simulator never blocks an idea; it just
   collects the winners.</p>
-  <pre><code>from kymera import RewardTerm, metrics
+  <pre><code>from zymera import RewardTerm, metrics
 
 def frontier_pull(prev, world, action, ctx):
     """Negative distance to the nearest uncovered cell — a gentle pull."""
@@ -193,12 +193,12 @@ def frontier_pull(prev, world, action, ctx):
     return -metrics.dist_to_frontier(world.body.position, uncovered,
                                      world.grid_h, world.grid_w)
 
-env = kymera.make("comm-coverage", grid=10, n_agents=3, comm_r=3, spawn_radius=1,
+env = zymera.make("comm-coverage", grid=10, n_agents=3, comm_r=3, spawn_radius=1,
                   terms=[("coverage", 1.0),                      # shorthand
                          ("capped_giant", 1.5, {"cap": 2}),      # parameterized
                          RewardTerm("pull", 0.05, frontier_pull)])  # yours
 
-traj = kymera.rollout(env, kymera.random_policy, 10, jax.random.PRNGKey(0),
+traj = zymera.rollout(env, zymera.random_policy, 10, jax.random.PRNGKey(0),
                       collect=("reward_terms",))
 sorted(traj["info"]["reward_terms"])
 ⇒ ['capped_giant', 'coverage', 'pull']</code></pre>
@@ -218,17 +218,17 @@ sorted(traj["info"]["reward_terms"])
   <code>GroupedMission</code> assigns each agent a group at reset and routes
   each group its own mission's reward — including randomized k-of-N membership
   for compromise-budget threat models:</p>
-  <pre><code>from kymera.missions import GroupedMission, Mission, RandomKofN
-from kymera import missions_terms as mt
+  <pre><code>from zymera.missions import GroupedMission, Mission, RandomKofN
+from zymera import missions_terms as mt
 
 blue = Mission(terms=(RewardTerm("cov", 1.0, mt.new_coverage,
                                  mt.new_coverage.requires),))
 red  = Mission(terms=(RewardTerm("disrupt", 1.0, mt.collision_count,
                                  mt.collision_count.requires),))
 
-env = kymera.GridEnv(
+env = zymera.GridEnv(
     grid_h=8, grid_w=8, n_agents=4,
-    channel=kymera.comms.GossipChannel(kymera.comms.DiskTopology(3)),
+    channel=zymera.comms.GossipChannel(zymera.comms.DiskTopology(3)),
     mission=GroupedMission(assignment=RandomKofN(k=1),   # one hidden red, re-rolled per reset
                            missions=(blue, red)))
 
@@ -250,17 +250,17 @@ sorted(info["reward_terms"])
   <p>A recipe is a function returning a <code>GridEnv</code>. Registered envs
   get <code>spec()</code> / <code>replace()</code> round-tripping for free —
   which is how run provenance serializes the env:</p>
-  <pre><code>from kymera.missions import Mission
+  <pre><code>from zymera.missions import Mission
 
 def my_patrol(grid=12, n_agents=3):
-    return kymera.GridEnv(grid_h=grid, grid_w=grid, n_agents=n_agents,
-                          obs=kymera.obs.VectorObs(),
+    return zymera.GridEnv(grid_h=grid, grid_w=grid, n_agents=n_agents,
+                          obs=zymera.obs.VectorObs(),
                           mission=Mission(terms=(), max_steps=50))
 
-kymera.register_env("my-patrol", my_patrol)
+zymera.register_env("my-patrol", my_patrol)
 
-env  = kymera.make("my-patrol", grid=10)
-env2 = kymera.make_from(env.spec())          # {"recipe": "my-patrol", "grid": 10}
+env  = zymera.make("my-patrol", grid=10)
+env2 = zymera.make_from(env.spec())          # {"recipe": "my-patrol", "grid": 10}
 assert env.spec() == env2.spec()
 env.replace(n_agents=5).n_agents
 ⇒ 5</code></pre>
@@ -273,10 +273,10 @@ env.replace(n_agents=5).n_agents
 
 <section id="viz">
   <h2>8 · Seeing it</h2>
-  <pre><code>from kymera import viz
+  <pre><code>from zymera import viz
 
-env  = kymera.make("comm-coverage", grid=10, n_agents=3, comm_r=3, spawn_radius=1)
-traj = kymera.rollout(env, kymera.random_policy, 25, jax.random.PRNGKey(0),
+env  = zymera.make("comm-coverage", grid=10, n_agents=3, comm_r=3, spawn_radius=1)
+traj = zymera.rollout(env, zymera.random_policy, 25, jax.random.PRNGKey(0),
                       keep="all", collect=("reward_terms",))
 
 viz.render_gif(traj["world"], "episode.gif", comm_radius=3)

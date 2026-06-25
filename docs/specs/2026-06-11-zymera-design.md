@@ -1,10 +1,10 @@
-# Kymera — design spec
+# Zymera — design spec
 
 **Date:** 2026-06-11
 **Status:** approved direction; implementation starts as a parallel build (see §9)
 **Supersedes:** the `zymera` v0 library at `../zymera_env/` (frozen, never edited; archived at cutover)
 
-Kymera (after *chimera* — a creature composed of different parts) is a JAX-native
+Zymera (after *chimera* — a creature composed of different parts) is a JAX-native
 multi-agent grid **simulator library** for cooperative, communication-constrained,
 and eventually adversarial swarm research. It is the successor to `zymera`,
 rebuilt around composition so that a new research idea is a new *component*
@@ -41,9 +41,9 @@ written in an experiment script — never an edit to the simulator.
 
 | Decision | Choice |
 |---|---|
-| Name | `kymera` (PyPI free as of 2026-06-11; no macOS case-collision with the `Zymera/` vault) |
+| Name | `zymera` (PyPI free as of 2026-06-11; no macOS case-collision with the `Zymera/` vault) |
 | Comm model | env-mediated only; action contract `(N,) int32` permanently |
-| Library boundary | **one installable library, two layers**: `kymera` (simulator) + `kymera.lab` (trainer/eval/provenance); experiments downstream |
+| Library boundary | **one installable library, two layers**: `zymera` (simulator) + `zymera.lab` (trainer/eval/provenance); experiments downstream |
 | Migration | **parallel build** in this sibling folder; `zymera_env/` is never touched; cutover after parity + shadow run |
 | Roadmap extensions | new mission types · richer worlds/dynamics (maps, rooms, energy) · adversarial k-of-N red agents. Per-agent heterogeneous physics explicitly *not* prioritized |
 | Architecture | component composition (panel winner, 3/3 judges) + grafts: `Assignment`/`RandomKofN`, eval lie-proofing, unweighted per-term logging, step-stamp bandwidth, traced-knobs-later, mission `annotations()` viz hook |
@@ -62,7 +62,7 @@ Protocols are `typing.Protocol` (duck typing), never runtime-dispatched ABCs.
 ### 3.1 Components
 
 ```
-kymera/
+zymera/
   env.py        # Env base, GridEnv orchestrator, registry, recipes, ActionId, ACTION_DELTAS
   worldgen.py   # Terrain + Spawn
   dynamics.py   # movement, collision, action masks, masked sampling
@@ -272,7 +272,7 @@ and reproducibility ride on it.
 ### 3.3 Construction ergonomics
 
 ```python
-import kymera as ky
+import zymera as ky
 env = ky.make("comm-coverage", grid=16, n_agents=4)            # recipe, good defaults
 env = ky.make("comm-coverage", grid=16, n_agents=4,            # same recipe, overridden
               comm=ky.comms.GossipChannel(ky.comms.DiskTopology(5), dropout=0.1),
@@ -320,7 +320,7 @@ Viz must never depend on what a *training* rollout happened to store.
 Annotation = Point(pos, tag) | Path(cells, tag) | Region(mask, tag)
 ```
 
-`kymera.viz` renders annotation primitives generically (VIP marker, patrol
+`zymera.viz` renders annotation primitives generically (VIP marker, patrol
 route, intruder, jammed region). New mission ⇒ automatically visualizable.
 
 **Trajectory policy:**
@@ -334,10 +334,10 @@ route, intruder, jammed region). New mission ⇒ automatically visualizable.
 - `viz` keeps accepting both stacked pytrees (scan) and Python lists of worlds
   (teleop), as in v0.
 
-## 5. `kymera.lab` — the machinery every experiment needs
+## 5. `zymera.lab` — the machinery every experiment needs
 
 ```
-kymera/lab/
+zymera/lab/
   config.py    # msgspec.Struct: EnvCfg/PPOCfg/StopCfg/PhaseCfg/RunCfg; load/dump/override
   ppo.py       # the ONE trainer: fit(env, model, cfg, *, init_from, run)
   nets.py      # graduated reference models (Encoder, FrontierCommAttnAC, …) + registry
@@ -359,7 +359,7 @@ kymera/lab/
   `cc.GRID`/`cc.N_AGENTS` class of wrong-metrics bug is structurally
   impossible.
 - **`lab.evaluate` bakes the doctrine once**: sample π, masked-iff-trained-
-  masked, all metrics via `kymera.metrics`, plus lie-proofing asserts —
+  masked, all metrics via `zymera.metrics`, plus lie-proofing asserts —
   deserialized params ≠ fresh init, and the checkpoint's recorded env-spec
   hash matches the eval env.
 - **Provenance as a context manager:**
@@ -380,13 +380,13 @@ with lab.run("curriculum-16x16", cfg) as run:    # creates experiments/runs/<id>
 ## 6. Experiments model
 
 Experiments live in `experiments/` in this repo — **not packaged**, imported
-nothing-from; they import kymera. One git history pins experiment code and
+nothing-from; they import zymera. One git history pins experiment code and
 library state together (the index's git sha resolves both).
 
 ```python
 # experiments/curriculum_16.py  (~the whole file)
-import kymera as ky
-from kymera import lab
+import zymera as ky
+from zymera import lab
 
 def frontier_pull(prev, world, action, ctx):           # idea born here;
     return -ctx.dist_to_frontier                        # graduates if it wins
@@ -448,8 +448,8 @@ State mapping from v0 `CommState`: `pos → body.position`,
 
 ## 9. Migration: parallel build, zero edits to `zymera_env/`
 
-The new name dissolves the package collision: `pip install -e .` (kymera) and
-`pip install -e ../zymera_env` (zymera v0) coexist in **kymera's own venv** —
+The new name dissolves the package collision: `pip install -e .` (zymera) and
+`pip install -e ../zymera_env` (zymera v0) coexist in **zymera's own venv** —
 live A/B parity tests import both. `zymera_env/`'s venv and campaign are
 untouched; optionally `git init` it once (zero code change) to snapshot.
 
@@ -467,7 +467,7 @@ untouched; optionally `git init` it once (zero code change) to snapshot.
 
 | Step | What | Gate |
 |---|---|---|
-| 0 | scaffold, pyproject (`kymera*` only packaged), this doc = commit zero | — |
+| 0 | scaffold, pyproject (`zymera*` only packaged), this doc = commit zero | — |
 | 1 | `metrics.py` | values match v0's triplicated blocks |
 | 2 | `dynamics` + masked sampling | claim-order property test |
 | 3 | `comms` | gossip bit-parity vs live v0 |
@@ -476,7 +476,7 @@ untouched; optionally `git init` it once (zero code change) to snapshot.
 | 6 | `viz` port (+ annotations) | renders a re-simulated v0-config episode |
 | 7 | `lab`: runio/config first, then trainer, nets ported verbatim | old `.eqx` checkpoints load |
 | 8 | **shadow run** | curriculum result within seed noise |
-| 9 | cutover: new experiments here; `zymera_env/` archived read-only; journal copied forward with a "kymera era" marker | — |
+| 9 | cutover: new experiments here; `zymera_env/` archived read-only; journal copied forward with a "zymera era" marker | — |
 
 **Dual-maintenance rule:** the day the shadow run passes, the old stack is
 frozen — in-flight experiments finish there, every new idea lands here only.
@@ -496,7 +496,7 @@ frozen — in-flight experiments finish there, every new idea lands here only.
 - **Early-stop semantics under multi-seed vmap** — aggregate stop can cut a
   late-blooming seed (the w_conn=5 precedent); index records `core_version`.
 - **Dual-maintenance window** — the freeze rule (§9) is what keeps the port
-  honest; if old-stack feature work continues past the shadow run, kymera rots
+  honest; if old-stack feature work continues past the shadow run, zymera rots
   half-done.
 - **API creep** — resist re-exporting components at top level; the 13-name cap
   is the line.

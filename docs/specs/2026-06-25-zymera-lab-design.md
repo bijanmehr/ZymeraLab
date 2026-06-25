@@ -2,8 +2,9 @@
 
 **Date:** 2026-06-25
 **Status:** structure approved (brainstorm); implementation plan next.
-**Context:** consolidates `kymera` + `zymera_env` into one codebase. `kymera` is renamed to the `zymera`
-package; `zymera_env` is **archived** (tag `archive/pre-zymera-lab-fold`) as reference — *not* merged.
+**Context:** consolidates the simulator library and the prior `zymera_env` research stack into one
+codebase, `zymera_lab`. `zymera_env` is **archived** (tag `archive/pre-zymera-lab-fold`) as reference
+— *not* merged.
 
 ## Goal
 
@@ -15,7 +16,7 @@ tested library; **experiments are written separately**, downstream, and import i
 
 ```
 Project.Zymera/
-  zymera_lab/            the lab (renamed kymera) — reusable + tested
+  zymera_lab/            the lab — reusable + tested
     zymera/              ONE package: simulator + building blocks + trainers
       env.py · worldgen.py · dynamics.py · comms.py · obs.py · missions.py ·
       missions_terms.py · metrics.py · rollout.py · viz/ · sensor.py        # simulator
@@ -65,7 +66,7 @@ hyperparams, run). Proven pieces graduate back into `nets.py` / `train.py`.
 ## Phasing (fold-then-extend)
 
 - **P1 — scaffold & green:** add minimal `zymera/nets.py`, `zymera/train.py`, `zymera/sensor.py`; create
-  `zymera_experiments/`; archive `zymera_env`; rename folder `kymera/ → zymera_lab/`. The existing 216
+  `zymera_experiments/`; archive `zymera_env`; rename the repo folder to `zymera_lab/`. The existing 216
   tests stay green.
 - **P2 — grow:** add blocks/trainers (graph belief, ES role-switcher, PPO heads, certainty-field
   exploration) clean, driven by the first experiments; validate against archived results.
@@ -81,5 +82,5 @@ hyperparams, run). Proven pieces graduate back into `nets.py` / `train.py`.
 
 ## Naming / git
 
-- Package `zymera`; repo folder `zymera_lab/` (kymera renamed). Work on branch `zymera-lab-consolidation`.
+- Package `zymera`; repo folder `zymera_lab/`. Work on branch `zymera-lab-consolidation`.
 - `zymera_env` is tagged `archive/pre-zymera-lab-fold` and left in place, read-only.

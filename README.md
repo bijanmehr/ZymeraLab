@@ -1,8 +1,8 @@
-# kymera
+# zymera
 
 JAX-native multi-agent grid **simulator library** for communication-constrained
 swarm research. Like `gymnax`, but multi-agent — you write the training loop;
-kymera gives you the env, the rollout primitive, the metrics, and the viz.
+zymera gives you the env, the rollout primitive, the metrics, and the viz.
 
 Successor to `zymera` (frozen at `../zymera_env/` as the parity reference),
 rebuilt around **composition**: an env is five swappable components — worldgen,
@@ -10,7 +10,7 @@ dynamics, comms, obs, mission — on one orchestrator. A new research idea is a
 new component, usually a plain function in your experiment script, never an
 edit to the simulator.
 
-> **Parity:** with the same PRNGKey and policy, kymera reproduces zymera v0
+> **Parity:** with the same PRNGKey and policy, zymera reproduces zymera v0
 > bit-for-bit (walls, spawns, actions, positions, gossip belief maps,
 > observations) and per-step rewards to 1e-5 — gated in `tests/test_parity.py`
 > against golden trajectories dumped from the live v0 install.
@@ -26,11 +26,11 @@ pytest tests/ -q                 # full suite incl. the v0 parity gate
 ## Five-line quick start
 
 ```python
-import jax, kymera
-from kymera import viz
+import jax, zymera
+from zymera import viz
 
-env  = kymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5)
-traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+env  = zymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5)
+traj = zymera.rollout(env, zymera.random_policy, 70, jax.random.PRNGKey(0),
                       keep="all", collect=("reward_terms",))
 viz.make_report(traj, "report.html", env=env)
 ```
@@ -41,7 +41,7 @@ Open **`docs/index.html`** in a browser — overview, public API, component map,
 doctrine. The env walkthrough (recipes → World → composing → custom reward
 terms → red-within-blue groups → custom envs → viz → memory profiles) is
 **`docs/tutorial-env.html`**; every code block there was executed against this
-build. Architecture rationale: `docs/specs/2026-06-11-kymera-design.md`.
+build. Architecture rationale: `docs/specs/2026-06-11-zymera-design.md`.
 
 ## Public API (14 top-level names + 7 subnamespaces)
 
@@ -54,7 +54,7 @@ build. Architecture rationale: `docs/specs/2026-06-11-kymera-design.md`.
 | `rollout(env, policy, n, key, keep=, collect=)` | `lax.scan` rollout, vmap-friendly |
 | `random_policy` | the example policy |
 
-Subnamespaces: `kymera.worldgen` · `dynamics` · `comms` · `obs` · `missions` ·
+Subnamespaces: `zymera.worldgen` · `dynamics` · `comms` · `obs` · `missions` ·
 `missions_terms` · `metrics` · `viz` (opt-in extra).
 
 ## Env contract
@@ -76,7 +76,7 @@ library (coverage/connectivity/collision/overlap/cohesion/degree/PBRS/soft-CBF),
 viz (gif, comm overlay with potential-vs-delivered edges, self-contained HTML
 report with per-term curves, mission annotations).
 
-**Deferred (next milestones):** `kymera.lab` — unified PPO trainer
+**Deferred (next milestones):** `zymera.lab` — unified PPO trainer
 (flags-not-forks), `evaluate` with the sample-π doctrine + lie-proofing, run
 provenance (`experiments/index.jsonl`, git fingerprints) — plus the trainer
 shadow run vs v0, isometric renderer + keyboard teleop, channel bandwidth,
