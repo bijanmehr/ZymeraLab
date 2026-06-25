@@ -26,7 +26,7 @@ def _b64_fig(fig) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def make_report(traj, path: str, *, env=None, title: str = "kymera report",
+def make_report(traj, path: str, *, env=None, title: str = "zymera report",
                 fps: int = 6, comm_radius: Optional[int] = None) -> str:
     """Write a single-file HTML report for a ``rollout(..., keep="all")`` dict.
 

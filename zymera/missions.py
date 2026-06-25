@@ -5,7 +5,7 @@ A :class:`Mission` is a frozen composition of :class:`RewardTerm`\\ s: the env
 asks it for ``reward`` (Σ weighted terms + the UNWEIGHTED per-term dict that
 feeds ``info["reward_terms"]``), ``done``, mission-owned ``metrics``, and
 drawable ``annotations``. :class:`GroupedMission` routes per-group missions
-over a shared :class:`~kymera.metrics.StepCtx` so k-of-N red agents can score
+over a shared :class:`~zymera.metrics.StepCtx` so k-of-N red agents can score
 a different objective than the blue team (design spec §3.1).
 
 JAX contract (the static-object rule):
@@ -46,7 +46,7 @@ TermFn = Callable[[Any, Any, chex.Array, Any], chex.Array]
 class RewardTerm:
     """One named reward component: ``weight · fn(prev, world, action, ctx)``.
 
-    ``requires`` names the :class:`~kymera.metrics.StepCtx` fields the term
+    ``requires`` names the :class:`~zymera.metrics.StepCtx` fields the term
     reads — the env unions these across terms/obs at ``__init__`` so only the
     requested machinery compiles. ``fn`` must return the UNWEIGHTED ``(N,)``
     value; the weighted sum happens in :meth:`Mission.reward`.
@@ -65,7 +65,7 @@ class RewardTerm:
 # Annotation primitives (viz data contract, spec §4)
 # =============================================================================
 # Plain frozen dataclasses with no JAX dependency: missions stay drawable
-# without kymera.viz knowing their internals.
+# without zymera.viz knowing their internals.
 
 
 @dataclass(frozen=True)
@@ -188,7 +188,7 @@ class Mission:
         return out
 
     def annotations(self, world, mstate) -> Tuple[Annotation, ...]:
-        """Drawable primitives for kymera.viz. Default: none."""
+        """Drawable primitives for zymera.viz. Default: none."""
         del world, mstate
         return ()
 

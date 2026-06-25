@@ -4,13 +4,13 @@ The proven reward-term zoo, ported from zymera v0's reward block
 
 Every term is ``(prev_world, world, action, ctx) -> (N,) float32`` returning
 an UNSIGNED, UNWEIGHTED magnitude — penalties get their sign from the
-:class:`~kymera.missions.RewardTerm` weight, exactly mirroring v0's
+:class:`~zymera.missions.RewardTerm` weight, exactly mirroring v0's
 ``reward = w_cov·newly + w_conn·conn − w_overlap·overlap − w_coll·coll``
 (so :data:`DEFAULT_TERMS` carries ``-4.0`` on the collision term).
 
 Parameterized terms are factories returning a term function. Each function
 (including factory outputs) carries a ``.requires`` frozenset attribute
-naming the :class:`~kymera.metrics.StepCtx` fields it reads — pass it
+naming the :class:`~zymera.metrics.StepCtx` fields it reads — pass it
 through to ``RewardTerm(requires=...)`` so the env derives those fields.
 The CBF terms compute from positions directly (``requires = ∅``): their λ₂
 eigendecomposition only compiles into envs that actually use them.

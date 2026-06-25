@@ -1,4 +1,4 @@
-"""Tests for kymera.dynamics — movement parity vs v0 goldens + claim-order properties."""
+"""Tests for zymera.dynamics — movement parity vs v0 goldens + claim-order properties."""
 
 import functools
 from pathlib import Path
@@ -8,14 +8,14 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera.dynamics import (
+from zymera.dynamics import (
     GridDynamics,
     NoCollision,
     SequentialClaim,
     sequential_masked_logp_ent,
     sequential_masked_sample,
 )
-from kymera.env import ActionId, Body, N_ACTIONS, World
+from zymera.env import ActionId, Body, N_ACTIONS, World
 
 GOLDEN = Path(__file__).parent / "golden"
 

@@ -1,4 +1,4 @@
-"""kymera.metrics — hand-computed cases, golden-replay parity, StepCtx contract."""
+"""zymera.metrics — hand-computed cases, golden-replay parity, StepCtx contract."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,9 +8,9 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera import metrics
-from kymera.env import Body, World
-from kymera.metrics import StepCtx, derive
+from zymera import metrics
+from zymera.env import Body, World
+from zymera.metrics import StepCtx, derive
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -25,7 +25,7 @@ def commcov():
 
 @dataclass(frozen=True)
 class _DiskTopo:
-    """Minimal Topology stand-in (avoids depending on kymera.comms)."""
+    """Minimal Topology stand-in (avoids depending on zymera.comms)."""
 
     radius: int
 

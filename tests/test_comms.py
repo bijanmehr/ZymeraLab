@@ -1,4 +1,4 @@
-"""Tests for kymera.comms — topology + gossip/null channels.
+"""Tests for zymera.comms — topology + gossip/null channels.
 
 The gate is the parity test: replaying the golden v0 trajectory through
 ``GossipChannel(DiskTopology(5), delay=1, dropout=0.0)`` must reproduce
@@ -12,14 +12,14 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera.comms import (
+from zymera.comms import (
     ChannelState,
     DiskTopology,
     GossipChannel,
     NullChannel,
     Topology,
 )
-from kymera.env import Body, World
+from zymera.env import Body, World
 
 GOLDEN = Path(__file__).parent / "golden" / "commcov.npz"
 

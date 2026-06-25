@@ -1,4 +1,4 @@
-"""kymera.viz — drawing for trajectories and worlds (opt-in extra).
+"""zymera.viz — drawing for trajectories and worlds (opt-in extra).
 
 Imports matplotlib/pillow; never imported by the headless core. The viz
 doctrine is RE-SIMULATION: a run is reproducible from (env spec, checkpoint,

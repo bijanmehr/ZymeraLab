@@ -1,4 +1,4 @@
-"""kymera.obs — parity vs zymera v0 goldens + builder behavior.
+"""zymera.obs — parity vs zymera v0 goldens + builder behavior.
 
 Parity gates (the bit-exact contract):
 
@@ -21,8 +21,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera.env import Body, World
-from kymera.obs import CHANNEL_FNS, GridObs, VectorObs, register_channel
+from zymera.env import Body, World
+from zymera.obs import CHANNEL_FNS, GridObs, VectorObs, register_channel
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -47,7 +47,7 @@ class _Ctx:
 
 
 def _adjacency(pos, r):
-    """Chebyshev disk adjacency, diag True (inline — kymera.metrics may not
+    """Chebyshev disk adjacency, diag True (inline — zymera.metrics may not
     exist yet while modules build in parallel)."""
     d = jnp.max(jnp.abs(pos[:, None, :] - pos[None, :, :]), axis=-1)
     return d <= r

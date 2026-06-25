@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera import worldgen
+from zymera import worldgen
 
 GOLDEN = Path(__file__).parent / "golden"
 

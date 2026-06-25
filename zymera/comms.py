@@ -1,7 +1,7 @@
 """
 Comms — potential topology + delivery channels.
 
-Two layers, deliberately separated (see docs/specs/2026-06-11-kymera-design.md):
+Two layers, deliberately separated (see docs/specs/2026-06-11-zymera-design.md):
 
 * :class:`Topology` — *potential* adjacency: who COULD talk this step.
   Reward terms and connectivity metrics read this unless they explicitly

@@ -1,4 +1,4 @@
-"""kymera.missions / missions_terms — golden reward parity, PBRS telescoping,
+"""zymera.missions / missions_terms — golden reward parity, PBRS telescoping,
 group routing, assignment, construction-time validation."""
 
 import dataclasses
@@ -9,14 +9,14 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from kymera import metrics
-from kymera.env import Body, World
-from kymera.metrics import StepCtx, derive
-from kymera.missions import (
+from zymera import metrics
+from zymera.env import Body, World
+from zymera.metrics import StepCtx, derive
+from zymera.missions import (
     Annotation, Assignment, FixedAssignment, GroupedMission, Mission, Path,
     Point, RandomKofN, Region, RewardTerm,
 )
-from kymera.missions_terms import (
+from zymera.missions_terms import (
     DEFAULT_TERMS, capped_giant, cbf_coll, cbf_conn, cohesion_leash,
     collision_count, degree_floor, new_coverage, pbrs, phi_field_mean,
     phi_nearest_frontier, reach_fraction, same_step_overlap,
@@ -25,7 +25,7 @@ from kymera.missions_terms import (
 GOLDEN = _Path(__file__).parent / "golden"
 
 try:                                   # comms is a concurrent sibling module —
-    from kymera.comms import DiskTopology as _Topo      # use it if importable,
+    from zymera.comms import DiskTopology as _Topo      # use it if importable,
 except ImportError:                    # else a stand-in with the same adjacency
     @dataclasses.dataclass(frozen=True)
     class _Topo:

@@ -6,7 +6,7 @@ reward, the trainer cores, and graded eval: pure-JAX geometry / graph helpers
 (:func:`pairwise_dist`, :func:`adjacency`, :func:`reach`, ...) plus the
 per-step derived-quantity cache :class:`StepCtx` produced by :func:`derive`.
 
-JAX contract (see docs/specs/2026-06-11-kymera-design.md §3.1):
+JAX contract (see docs/specs/2026-06-11-zymera-design.md §3.1):
 
 * Every function is jit/vmap/``lax.scan``-safe with fixed shapes.
 * :class:`StepCtx` structure is a function of the ``requires`` set ONLY —

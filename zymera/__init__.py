@@ -1,14 +1,14 @@
-"""kymera — JAX-native multi-agent grid simulator.
+"""zymera — JAX-native multi-agent grid simulator.
 
-Headless core: ``import kymera`` pulls no plotting or training libraries.
-Drawing lives in :mod:`kymera.viz`; training machinery in :mod:`kymera.lab`
+Headless core: ``import zymera`` pulls no plotting or training libraries.
+Drawing lives in :mod:`zymera.viz`; training machinery in :mod:`zymera.lab`
 (both are opt-in extras). Components live in the subnamespaces
-(``kymera.worldgen`` / ``dynamics`` / ``comms`` / ``obs`` / ``missions`` /
+(``zymera.worldgen`` / ``dynamics`` / ``comms`` / ``obs`` / ``missions`` /
 ``missions_terms`` / ``metrics``).
 """
 
 # NOTE: .env must be imported FIRST — it drives the package load order.
-# Component modules back-import names from kymera.env (e.g. ACTION_DELTAS);
+# Component modules back-import names from zymera.env (e.g. ACTION_DELTAS);
 # env.py defines those above its own component imports, so the cycle resolves
 # only when env.py is the entry point.
 from .env import (

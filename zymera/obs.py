@@ -31,7 +31,7 @@ import chex
 import jax.numpy as jnp
 
 # =============================================================================
-# Grid helpers (self-contained — obs must not depend on kymera.metrics)
+# Grid helpers (self-contained — obs must not depend on zymera.metrics)
 # =============================================================================
 
 
@@ -250,7 +250,7 @@ class GridObs:
                 raise ValueError(
                     f"unknown obs channel {name!r}; available: "
                     f"{sorted(CHANNEL_FNS)} (add custom ones via "
-                    "kymera.obs.register_channel)"
+                    "zymera.obs.register_channel)"
                 )
 
     # ---- ObsBuilder protocol ------------------------------------------------

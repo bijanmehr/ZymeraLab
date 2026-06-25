@@ -1,8 +1,8 @@
 """
-Env contract, state schema, and registry — the spine of kymera.
+Env contract, state schema, and registry — the spine of zymera.
 
 This module owns the FROZEN contracts everything else conforms to
-(see docs/specs/2026-06-11-kymera-design.md):
+(see docs/specs/2026-06-11-zymera-design.md):
 
 * :class:`ActionId` / ``ACTION_DELTAS`` — the movement vocabulary.
 * :class:`Body` / :class:`World` — the state pytree every component reads.
@@ -83,7 +83,7 @@ class World:
     * ``seen_by``    — (N, H, W) bool, each agent's OWN covered/sensed cells.
       The team-coverage metric reads ``covered = seen_by.any(0)``.
     * ``comm_graph`` — (N, N) bool, edges that DELIVERED this step (realized,
-      post-dropout). Potential topology lives in :class:`kymera.metrics.StepCtx`.
+      post-dropout). Potential topology lives in :class:`zymera.metrics.StepCtx`.
     * ``channel``    — channel-owned pytree (ring buffers, beliefs); ``()`` when
       the env has no channel.
     * ``mission``    — mission-owned pytree (waypoints, NPC positions); ``()``
@@ -199,7 +199,7 @@ def make_from(spec: Dict[str, Any]) -> Env:
 # =============================================================================
 
 # Component imports sit BELOW the core definitions so modules that import
-# names from kymera.env (e.g. dynamics -> ACTION_DELTAS) resolve them during
+# names from zymera.env (e.g. dynamics -> ACTION_DELTAS) resolve them during
 # package initialization.
 from . import metrics as _metrics                                  # noqa: E402
 from .comms import DiskTopology, GossipChannel, NullChannel        # noqa: E402
@@ -372,7 +372,7 @@ def _env_spec(self) -> Dict[str, Any]:
     """``{"recipe": name, **kwargs}`` — round-trips through :func:`make_from`."""
     if getattr(self, "_recipe", None) is None:
         raise ValueError(
-            "spec()/replace() need a recipe-built env (kymera.make(...)); "
+            "spec()/replace() need a recipe-built env (zymera.make(...)); "
             "this env was constructed directly."
         )
     name, kw = self._recipe
@@ -395,7 +395,7 @@ Env.replace = _env_replace
 # =============================================================================
 
 # Term shorthand: ("name", weight) or ("name", weight, {params}) tuples are
-# resolved against kymera.missions_terms; RewardTerm objects pass through.
+# resolved against zymera.missions_terms; RewardTerm objects pass through.
 _PLAIN_TERMS = {
     "coverage":     "new_coverage",
     "connectivity": "reach_fraction",
@@ -436,7 +436,7 @@ def _resolve_terms(terms, comm_r: int) -> tuple:
                 f"unknown term shorthand {name!r}; known: "
                 f"{sorted(_PLAIN_TERMS)} + ['capped_giant', 'cohesion', 'degree', "
                 "'pbrs_frontier', 'pbrs_field', 'cbf_conn', 'cbf_coll'] "
-                "(or pass a kymera.RewardTerm directly)"
+                "(or pass a zymera.RewardTerm directly)"
             )
         resolved.append(RewardTerm(name=name, weight=float(weight), fn=fn,
                                    requires=getattr(fn, "requires", frozenset())))

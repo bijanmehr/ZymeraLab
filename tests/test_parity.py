@@ -1,7 +1,7 @@
-"""THE full parity gate: kymera reproduces zymera v0 trajectories exactly.
+"""THE full parity gate: zymera reproduces zymera v0 trajectories exactly.
 
 Goldens were dumped read-only from the live v0 install (see
-docs/plans/2026-06-12-kymera-implementation.md Task 1). Same PRNGKey + the
+docs/plans/2026-06-12-zymera-implementation.md Task 1). Same PRNGKey + the
 same random policy must reproduce walls, spawns, actions, positions, gossip
 shared maps, observations exactly, and per-step rewards within fp tolerance.
 """
@@ -13,7 +13,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-import kymera
+import zymera
 
 GOLD = Path(__file__).parent / "golden"
 
@@ -29,7 +29,7 @@ def empty():
 
 
 def _commcov_env():
-    return kymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5,
+    return zymera.make("comm-coverage", grid=16, n_agents=4, comm_r=5,
                        cover_r=0, sense_r=1, spawn_radius=2)
 
 
@@ -44,17 +44,17 @@ def test_spawn_parity(commcov):
 
 def test_commcov_full_rollout_parity(commcov):
     env = _commcov_env()
-    traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+    traj = zymera.rollout(env, zymera.random_policy, 70, jax.random.PRNGKey(0),
                           keep="all")
     # Same action stream => the frozen key protocol is intact.
     np.testing.assert_array_equal(np.asarray(traj["action"]), commcov["actions"])
     # Same physics.
     np.testing.assert_array_equal(np.asarray(traj["world"].body.position),
                                   commcov["positions"])
-    # Same own-knowledge maps (v0 explored_by == kymera seen_by).
+    # Same own-knowledge maps (v0 explored_by == zymera seen_by).
     np.testing.assert_array_equal(np.asarray(traj["world"].seen_by),
                                   commcov["explored_by"])
-    # Same gossip (v0 shared == kymera channel.shared) — bit-for-bit.
+    # Same gossip (v0 shared == zymera channel.shared) — bit-for-bit.
     np.testing.assert_array_equal(np.asarray(traj["world"].channel.shared),
                                   commcov["shared"])
     # Same observations.
@@ -66,20 +66,20 @@ def test_commcov_full_rollout_parity(commcov):
 
 def test_commcov_coverage_metric_matches(commcov):
     env = _commcov_env()
-    traj = kymera.rollout(env, kymera.random_policy, 70, jax.random.PRNGKey(0),
+    traj = zymera.rollout(env, zymera.random_policy, 70, jax.random.PRNGKey(0),
                           keep="all")
     covered = np.asarray(traj["world"].seen_by.any(1))          # (T+1, H, W)
     np.testing.assert_array_equal(covered, commcov["team_explored"])
 
 
 def test_empty_rollout_parity(empty):
-    env = kymera.make("empty", grid_h=8, grid_w=8, n_agents=4)
+    env = zymera.make("empty", grid_h=8, grid_w=8, n_agents=4)
     for s in (0, 1, 2):
         obs0, state = env.reset(jax.random.PRNGKey(s))
         np.testing.assert_array_equal(np.asarray(state.body.position),
                                       empty[f"pos0_k{s}"])
         np.testing.assert_allclose(np.asarray(obs0), empty[f"obs0_k{s}"], atol=1e-6)
-    traj = kymera.rollout(env, kymera.random_policy, 20, jax.random.PRNGKey(0))
+    traj = zymera.rollout(env, zymera.random_policy, 20, jax.random.PRNGKey(0))
     np.testing.assert_array_equal(np.asarray(traj["action"]), empty["actions"])
     np.testing.assert_array_equal(np.asarray(traj["world"].body.position),
                                   empty["positions"])
@@ -91,7 +91,7 @@ def test_empty_rollout_parity(empty):
 def test_gossip_superset_invariant(commcov):
     """shared must always be a superset of own knowledge (v0 selftest)."""
     env = _commcov_env()
-    traj = kymera.rollout(env, kymera.random_policy, 30, jax.random.PRNGKey(7),
+    traj = zymera.rollout(env, zymera.random_policy, 30, jax.random.PRNGKey(7),
                           keep="all")
     w = traj["world"]
     assert bool((w.channel.shared >= w.seen_by).all())
