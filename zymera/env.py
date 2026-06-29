@@ -237,7 +237,8 @@ class GridEnv(Env):
     """
 
     def __init__(self, *, grid_h: int = 8, grid_w: int = 8, n_agents: int = 1,
-                 cover_r: int = 0, wall_sense_r: int = 0, terrain=None, spawn=None,
+                 cover_r: int = 0, wall_sense_r: int = 0, sense_free: bool = False,
+                 terrain=None, spawn=None,
                  dynamics=None, channel=None, obs=None, mission=None):
         self.grid_h, self.grid_w = int(grid_h), int(grid_w)
         self.n_agents = int(n_agents)
@@ -246,6 +247,11 @@ class GridEnv(Env):
         # (v0 parity): walls never enter the belief. >0 folds sensed walls into
         # the gossip outbox so the shared belief becomes a true occupancy map.
         self.wall_sense_r = int(wall_sense_r)
+        # Occupancy belief: when True (with wall_sense_r>0), the gossip belief folds the
+        # FULL sensed region (free + walls) within wall_sense_r, not just walls — so
+        # `known` becomes a true free/occupied/unknown occupancy map and `local_frontier`
+        # a real band-edge frontier (not the degenerate adjacent-cell signal at cover_r=0).
+        self.sense_free = bool(sense_free)
         self.terrain = terrain if terrain is not None else OpenTerrain()
         self.spawn = spawn if spawn is not None else ScatterSpawn()
         self.dynamics = dynamics if dynamics is not None else GridDynamics()
@@ -302,6 +308,18 @@ class GridEnv(Env):
         fp = _metrics.cheby_footprint(pos, self.grid_h, self.grid_w, self.wall_sense_r)
         return fp & wall[None]
 
+    def _sensed_occupancy(self, pos: jax.Array, wall: jax.Array) -> jax.Array:
+        """(N, H, W) bool — cells folded into the belief outbox each step.
+
+        ``sense_free`` (with ``wall_sense_r>0``): the FULL sensed region within
+        ``wall_sense_r`` (free **and** wall cells) → the shared belief ``known``
+        becomes a true free/occupied/unknown occupancy map and ``local_frontier``
+        a real band-edge frontier. Otherwise: walls only (the SLAM default), or
+        empty when wall-blind."""
+        if self.sense_free and self.wall_sense_r > 0:    # static gate — occupancy path
+            return _metrics.cheby_footprint(pos, self.grid_h, self.grid_w, self.wall_sense_r)
+        return self._sensed_walls(pos, wall)
+
     # --- gym API (key protocol FROZEN — see module docstring) ----------------
 
     def reset(self, key: jax.Array) -> Tuple[jax.Array, World]:
@@ -321,7 +339,7 @@ class GridEnv(Env):
             comm_graph=jnp.zeros((self.n_agents, self.n_agents), dtype=jnp.bool_),
             step_count=jnp.zeros((), jnp.int32), channel=(), mission=(), group=group,
         )
-        outbox0 = seen0 | self._sensed_walls(pos, wall)   # belief = coverage ∪ sensed walls
+        outbox0 = seen0 | self._sensed_occupancy(pos, wall)   # belief = coverage ∪ sensed region
         world = world.replace(channel=self.channel.init(world, outbox0))
         world = world.replace(mission=self.mission.init_state(jax.random.fold_in(key, 2), world))
         ctx = self._ctx(world, world, delivered=world.comm_graph,
@@ -338,7 +356,7 @@ class GridEnv(Env):
         seen1 = state.seen_by | self._footprint(body1.position, state.wall)
         w = state.replace(body=body1, explored=explored1, seen_by=seen1,
                           step_count=state.step_count + 1)
-        outbox1 = seen1 | self._sensed_walls(body1.position, state.wall)
+        outbox1 = seen1 | self._sensed_occupancy(body1.position, state.wall)
         _incoming, chan1, delivered = self.channel.deliver(w, outbox1, state.channel, k_chan)
         w = w.replace(channel=chan1, comm_graph=delivered)
         ctx = self._ctx(state, w, delivered=delivered, blocked=blocked)
@@ -476,12 +494,20 @@ def _comm_coverage_recipe(grid: int = 16, n_agents: int = 4, comm_r: int = 5,
                           cover_r: int = 0, sense_r: int = 1, n_obstacles: int = 0,
                           spawn_radius=2, collision: str = "none",
                           delay: int = 1, dropout: float = 0.0, bandwidth=None,
-                          max_steps=None, terms=None, sense_walls: bool = False) -> GridEnv:
+                          max_steps=None, terms=None, sense_walls: bool = False,
+                          sense_free: bool = False, boundary: bool = False) -> GridEnv:
     """Cooperative coverage with range-limited gossip (the zymera-v0 task).
 
     ``sense_walls`` (default ``False`` = v0 parity, wall-blind) folds walls
     sensed within ``sense_r`` into the shared belief, so ``known_walls`` works
     and walls stop reading as ``local_frontier``.
+
+    ``sense_free`` upgrades that belief to a full **occupancy** map: the entire
+    sensed region (free **and** wall, within ``sense_r``) enters the belief, so
+    ``local_frontier`` becomes a true band-edge frontier instead of the
+    degenerate adjacent-cell signal at ``cover_r=0`` (implies wall sensing).
+    ``boundary`` adds the field-edge obs channel so the (position-blind) policy
+    can perceive the mission-field extent. Both default off (parity).
     """
     from . import missions_terms as mt
 
@@ -489,17 +515,22 @@ def _comm_coverage_recipe(grid: int = 16, n_agents: int = 4, comm_r: int = 5,
         raise ValueError(f'collision must be "none" or "block", got {collision!r} '
                          "(collision-free SAMPLING is the trainer's mask_collisions flag)")
     term_tuple = mt.DEFAULT_TERMS if terms is None else _resolve_terms(terms, comm_r)
+    channels = ("known", "own_pos", "known_walls", "neighbors", "local_frontier")
+    if sense_free:
+        channels = channels + ("occ_frontier",)
+    if boundary:
+        channels = channels + ("boundary",)
     return GridEnv(
         grid_h=grid, grid_w=grid, n_agents=n_agents, cover_r=cover_r,
-        wall_sense_r=sense_r if sense_walls else 0,
+        wall_sense_r=sense_r if (sense_walls or sense_free) else 0,
+        sense_free=sense_free,
         terrain=RandomWalls(n_obstacles) if n_obstacles else OpenTerrain(),
         spawn=ClusterSpawn(spawn_radius) if spawn_radius is not None else ScatterSpawn(),
         dynamics=GridDynamics(collision=SequentialClaim() if collision == "block"
                               else NoCollision()),
         channel=GossipChannel(DiskTopology(comm_r), delay=delay, dropout=dropout,
                               bandwidth=bandwidth),
-        obs=GridObs(channels=("known", "own_pos", "known_walls", "neighbors",
-                              "local_frontier"),
+        obs=GridObs(channels=channels,
                     sense_r=sense_r, central=("team_explored", "all_pos", "walls")),
         mission=Mission(terms=term_tuple, max_steps=max_steps),
     )

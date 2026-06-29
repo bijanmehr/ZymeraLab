@@ -101,6 +101,32 @@ def _local_frontier(world, ctx, sense_r: int = 1) -> chex.Array:
     return ((~world.channel.shared) & window).astype(jnp.float32)
 
 
+def _occ_frontier(world, ctx) -> chex.Array:
+    """(N, H, W) — the occupancy frontier of each agent's belief: known-FREE
+    cells that border an UNKNOWN cell (a 4-neighbour not yet in the belief).
+
+    Unlike :func:`_local_frontier` (egocentric "unknown within ``sense_r`` of
+    me"), this is the *global* edge of the explored region — the set of true
+    exploration targets (Yamauchi). It stays informative under ``sense_free``
+    occupancy, where the egocentric window is already all-sensed so
+    ``local_frontier`` collapses to empty. Free-ness and adjacency are read from
+    the post-gossip belief (``shared`` ∩ ``~wall`` — the wall-ness of a *known*
+    cell is itself known), never from unknown ground truth. Off-grid neighbours
+    count as not-unknown, so the field edge is not a frontier — natural
+    containment within the mission field."""
+    del ctx
+    shared = world.channel.shared                 # (N,H,W) known cells
+    free = shared & ~world.wall[None]             # known-free
+    unknown = ~shared
+    nbr_unknown = (
+        jnp.pad(unknown[:, 1:, :],  ((0, 0), (0, 1), (0, 0)))    # neighbour below
+        | jnp.pad(unknown[:, :-1, :], ((0, 0), (1, 0), (0, 0)))  # neighbour above
+        | jnp.pad(unknown[:, :, 1:],  ((0, 0), (0, 0), (0, 1)))  # neighbour right
+        | jnp.pad(unknown[:, :, :-1], ((0, 0), (0, 0), (1, 0)))  # neighbour left
+    )
+    return (free & nbr_unknown).astype(jnp.float32)
+
+
 def _team_explored(world, ctx) -> chex.Array:
     """(H, W) — ground-truth team coverage (``world.covered``)."""
     del ctx
@@ -120,15 +146,37 @@ def _walls(world, ctx) -> chex.Array:
     return world.wall.astype(jnp.float32)
 
 
+def _boundary(world, ctx) -> chex.Array:
+    """(H, W) — the field boundary: the outer ring of grid cells.
+
+    The LPAC backbone global-average-pools the CNN map (for scale-invariance),
+    which strips absolute position — so agents are field-extent-blind and cannot
+    tell a true map-edge from merely-unexplored interior. This static ring
+    re-grounds "here is the edge of the world": stacked with ``own_pos`` /
+    ``known`` the CNN reads near-boundary-ness locally, so a frontier policy can
+    treat an edge frontier as a dead end and stay contained in the field. The
+    ring is the edge at *any* grid size, so it is scale-invariant and transfers
+    under a small→large warm-start (the regime where field-extent matters most).
+    A team plane (same for every agent); broadcast per-agent in ``agent_obs``."""
+    del ctx
+    h, w = world.wall.shape
+    ring = jnp.zeros((h, w), dtype=jnp.bool_)
+    ring = ring.at[0, :].set(True).at[h - 1, :].set(True)
+    ring = ring.at[:, 0].set(True).at[:, w - 1].set(True)
+    return ring.astype(jnp.float32)
+
+
 CHANNEL_FNS: Dict[str, Callable] = {
     "known":          _known,
     "own_pos":        _own_pos,
     "known_walls":    _known_walls,
     "neighbors":      _neighbors,
     "local_frontier": _local_frontier,
+    "occ_frontier":   _occ_frontier,
     "team_explored":  _team_explored,
     "all_pos":        _all_pos,
     "walls":          _walls,
+    "boundary":       _boundary,
 }
 
 
